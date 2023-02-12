@@ -1,6 +1,7 @@
 import os
 import argparse
 from pathlib import Path
+import shutil
 
 
 parser = argparse.ArgumentParser(description="Argparse Tutorial")
@@ -20,6 +21,7 @@ GPU_TYPE = args.gpu_type
 GPU_NUM = args.gpu_num
 CPU_NUM = args.cpu_num
 SCRIPT_PATH = args.script_path
+CHECKPOINTS_PATH = "checkpoints"
 
 dry_run_sbatch = args.dry_run
 
@@ -51,9 +53,9 @@ date
 echo $CUDA_VISIBLE_DEVICES
 BASEDIR=$(dirname "$0")
 echo "SCRIPT"
-cat {SCRIPT_PATH}
+cat {RUN_SCRIPT_PATH}
 echo "START"
-sh {SCRIPT_PATH} {GPU_NUM}
+sh {RUN_SCRIPT_PATH} {GPU_NUM} {CHECKPOINTS_PATH}
 date
     """
 
@@ -62,22 +64,32 @@ date
 
 if __name__ == "__main__":
 
-    # get output_path by script_path
     exp_root = Path(SCRIPT_PATH).parent
-    OUTPUT_PATH = exp_root / "out"
+    RUN_ROOT_PATH = exp_root / "runs"
+
+    i = 0
+    while os.path.exists(RUN_ROOT_PATH / f"run_{i}"):
+        i += 1
+    # get output_path by script_path
+
+    RUN_PATH = RUN_ROOT_PATH / f"run_{i}"
+    Path.mkdir(RUN_PATH, exist_ok=True, parents=True)
+
+    OUTPUT_PATH = RUN_PATH / "out"
     Path.mkdir(OUTPUT_PATH, exist_ok=True, parents=True)
 
-    i = 1
-    while os.path.exists(exp_root / f"cluster.slurm.{i}.sh"):
-        i += 1
+    RUN_SCRIPT_PATH = RUN_PATH / "finetune.sh"
+    shutil.copy2(SCRIPT_PATH, RUN_SCRIPT_PATH)
 
     JOB_NAME = exp_root.stem
     JOB_NAME = JOB_NAME + "_" + str(i)
 
+    CHECKPOINTS_PATH = RUN_PATH / "checkpoints"
+
     TEMPLATE = update_template()
     print(TEMPLATE)
 
-    slurm_script_path = exp_root / f"cluster.slurm.{i}.sh"
+    slurm_script_path = RUN_PATH / "cluster.slurm.sh"
     with open(slurm_script_path, "w") as f:
         f.write(TEMPLATE)
 
