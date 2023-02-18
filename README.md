@@ -1,5 +1,7 @@
 # srunit
 
+Automate your SLURM cluster...
+
 # Installation
 
 
