@@ -1,5 +1,35 @@
 # srunit
 
+# Installation
+
+
+1. Clone Project
+
+```
+git clone https://github.com/21jun/srunit.git
+```
+
+2. Set alias on ~/.bashrc
+
+```
+echo alias srunit=\"python ~/___YOUR_PATH___/srunit/parser.py" >> ~/.bashrc
+```
+or 
+
+```
+vim ~/.bashrc
+
+(Add line below at the end of file.)
+
+alias srunit=\"python ~/___YOUR_PATH___/srunit/parser.py" >> ~/.bashrc
+```
+
+
+
+3. Initialize 
+
+`source ~/.bashrc` for initialize
+
 # How to use it?
 
 1. place your shell script under experiments directory
