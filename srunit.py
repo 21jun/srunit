@@ -6,7 +6,7 @@ import shutil
 
 parser = argparse.ArgumentParser(description="Argparse Tutorial")
 parser.add_argument("--dry_run", "-d", action="store_true")
-parser.add_argument("--job_name", default="default")
+parser.add_argument("--job_name", "-j", default="default")
 parser.add_argument("--output_path", "-o", default=None)
 parser.add_argument("--gpu_type", "-t", default="A100")
 parser.add_argument("--gpu_num", "-n", default="8")
@@ -81,8 +81,9 @@ if __name__ == "__main__":
     RUN_SCRIPT_PATH = RUN_PATH / "finetune.sh"
     shutil.copy2(SCRIPT_PATH, RUN_SCRIPT_PATH)
 
-    JOB_NAME = exp_root.stem
-    JOB_NAME = JOB_NAME + "_" + str(i)
+    if JOB_NAME is None:
+        JOB_NAME = exp_root.stem
+        JOB_NAME = JOB_NAME + "_" + str(i)
 
     CHECKPOINTS_PATH = RUN_PATH / "checkpoints"
 
