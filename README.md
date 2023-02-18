@@ -12,7 +12,7 @@ git clone https://github.com/21jun/srunit.git
 2. Set alias on ~/.bashrc
 
 ```
-echo alias srunit=\"python ~/___YOUR_PATH___/srunit/parser.py" >> ~/.bashrc
+echo alias srunit=\"python ~/___YOUR_PATH___/srunit/srunit.py" >> ~/.bashrc
 ```
 or 
 
@@ -21,7 +21,7 @@ vim ~/.bashrc
 
 (Add line below at the end of file.)
 
-alias srunit=\"python ~/___YOUR_PATH___/srunit/parser.py" >> ~/.bashrc
+alias srunit=\"python ~/___YOUR_PATH___/srunit/srunit.py" >> ~/.bashrc
 ```
 
 
