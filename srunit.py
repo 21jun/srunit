@@ -6,7 +6,7 @@ import shutil
 
 parser = argparse.ArgumentParser(description="Argparse Tutorial")
 parser.add_argument("--dry_run", "-d", action="store_true")
-parser.add_argument("--job_name", "-j", default="default")
+parser.add_argument("--job_name", "-j", default=None)
 parser.add_argument("--output_path", "-o", default=None)
 parser.add_argument("--gpu_type", "-t", default="A100-80GB")
 parser.add_argument("--gpu_num", "-n", default="8")
