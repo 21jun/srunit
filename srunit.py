@@ -2,7 +2,11 @@ import os
 import argparse
 from pathlib import Path
 import shutil
+from string import Template
 
+
+with open("cache/default.conf", "r") as f:
+    f.read()
 
 parser = argparse.ArgumentParser(description="Argparse Tutorial")
 parser.add_argument("--dry_run", "-d", action="store_true")
@@ -12,6 +16,7 @@ parser.add_argument("--gpu_type", "-t", default="A100-80GB")
 parser.add_argument("--gpu_num", "-n", default="8")
 parser.add_argument("--cpu_num", "-c", default="16")
 parser.add_argument("--script_path", "-f", default="finetune.sh")
+parser.add_argument("--add", "-a", default="")
 args = parser.parse_args()
 
 
@@ -22,47 +27,30 @@ GPU_NUM = args.gpu_num
 CPU_NUM = args.cpu_num
 SCRIPT_PATH = args.script_path
 CHECKPOINTS_PATH = "checkpoints"
+ADDITIONAL_ARGS = args.add
+dry_run = args.dry_run
 
-dry_run_sbatch = args.dry_run
-
-
-def update_template():
-
-    TEMPLATE = f"""#!/bin/bash
-
-#SBATCH -J {JOB_NAME} # job name
-#SBATCH -o {OUTPUT_PATH}/output_%x.%j.out 
-#SBATCH -p {GPU_TYPE} # queue name or partiton name
-#SBATCH -t 72:00:00 # Run time (hh:mm:ss)
-#SBATCH  --gres=gpu:{GPU_NUM}
-#SBATCH  --nodes=1
-#SBATCH  --ntasks=1
-#SBATCH  --tasks-per-node=1
-#SBATCH  --cpus-per-task={CPU_NUM}
-
-srun -l /bin/hostname
-srun -l /bin/pwd
-srun -l /bin/date
-
-module purge
-pip freeze
-
-echo $CONDA_DEFAULT_ENV
-
-date
-echo $CUDA_VISIBLE_DEVICES
-BASEDIR=$(dirname "$0")
-echo "SCRIPT"
-cat {RUN_SCRIPT_PATH}
-echo "START"
-sh {RUN_SCRIPT_PATH} {GPU_NUM} {CHECKPOINTS_PATH}
-date
-    """
-
-    return TEMPLATE
+# Additional
 
 
 if __name__ == "__main__":
+
+    # Check configuration files (this will overwrite default.conf)
+    # find there is .conf file under current directory with .srunit directory and if exists
+    # set value `custom_config` to True
+    custom_config = False
+    for file in os.listdir("."):
+        if file.endswith(".conf") and ".srunit" in file:
+            custom_config = True
+            with open(file, "r") as f:
+                f.read()
+            break
+
+    # if there is no custom config file, use default.conf
+    if not custom_config:
+        # read cache/default.conf and save its value to `values`
+        with open("cache/default.conf", "r") as f:
+            values = f.read()
 
     exp_root = Path(SCRIPT_PATH).parent
     RUN_ROOT_PATH = exp_root / "runs"
@@ -73,13 +61,16 @@ if __name__ == "__main__":
     # get output_path by script_path
 
     RUN_PATH = RUN_ROOT_PATH / f"run_{i}"
-    Path.mkdir(RUN_PATH, exist_ok=True, parents=True)
+    if not dry_run:
+        Path.mkdir(RUN_PATH, exist_ok=True, parents=True)
 
     OUTPUT_PATH = RUN_PATH / "out"
-    Path.mkdir(OUTPUT_PATH, exist_ok=True, parents=True)
+    if not dry_run:
+        Path.mkdir(OUTPUT_PATH, exist_ok=True, parents=True)
 
     RUN_SCRIPT_PATH = RUN_PATH / "finetune.sh"
-    shutil.copy2(SCRIPT_PATH, RUN_SCRIPT_PATH)
+    if not dry_run:
+        shutil.copy2(SCRIPT_PATH, RUN_SCRIPT_PATH)
 
     if JOB_NAME is None:
         JOB_NAME = exp_root.stem
@@ -87,12 +78,21 @@ if __name__ == "__main__":
 
     CHECKPOINTS_PATH = RUN_PATH / "checkpoints"
 
-    TEMPLATE = update_template()
-    print(TEMPLATE)
+    print()
 
-    slurm_script_path = RUN_PATH / "cluster.slurm.sh"
-    with open(slurm_script_path, "w") as f:
-        f.write(TEMPLATE)
+    values = {
+        "JOB_NAME": JOB_NAME,
+        "OUTPUT_PATH": OUTPUT_PATH,
+        "GPU_TYPE": GPU_TYPE,
+        "GPU_NUM": GPU_NUM,
+        "CPU_NUM": CPU_NUM,
+        "SCRIPT_PATH": SCRIPT_PATH,
+        "CHECKPOINTS_PATH": CHECKPOINTS_PATH,
+        "RUN_SCRIPT_PATH": RUN_SCRIPT_PATH,
+        "ADDITIONAL_ARGS": ADDITIONAL_ARGS,
+    }
 
-    if not dry_run_sbatch:
-        os.system(f"sbatch {slurm_script_path}")
+    with open("template.sbatch", "r") as f:
+        src = Template(f.read())
+        result = src.safe_substitute(values)
+        print(result)
