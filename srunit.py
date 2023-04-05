@@ -3,6 +3,19 @@ import argparse
 from pathlib import Path
 import shutil
 from string import Template
+from datetime import datetime
+
+
+class bcolors:
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 def main():
@@ -15,45 +28,27 @@ def main():
             if file.suffix == ".conf":
                 if custom_config:
                     raise ValueError(
-                        "There are more than one custom config files in .srunit directory"
+                        bcolors.FAIL
+                        + "There are more than one custom config files (.conf) in .srunit directory"
+                        + bcolors.ENDC
                     )
                 custom_config = True
                 with open(file, "r") as f:
                     confs = f.read()
+                print(bcolors.HEADER + f"Load config: {file}" + bcolors.ENDC)
             if file.suffix == ".sbatch":
                 if custom_template:
                     raise ValueError(
-                        "There are more than one custom template files in .srunit directory"
+                        bcolors.FAIL
+                        + "There are more than one custom template files (.sbatch) in .srunit directory"
+                        + bcolors.ENDC
                     )
                 custom_template = True
                 with open(file, "r") as f:
                     template = f.read()
+                print(bcolors.HEADER + f"Load template: {file}" + bcolors.ENDC)
 
-    # print(custom_config)
-    if custom_config:
-        print("Custom config file found")
-    else:
-        print("No custom config file found, using default.conf")
-
-    if custom_template:
-        print("Custom template file found")
-    else:
-        print("No custom template file found, using template.sbatch")
-
-    # if there is no custom config file, use default.conf
-    if not custom_config:
-        # read cache/default.conf and save its value to `values`
-        with open("cache/default.conf", "r") as f:
-            confs = f.read()
-
-    if not custom_template:
-        with open("template.sbatch", "r") as f:
-            template = f.read()
-
-    for conf in confs.split("\n"):
-        print(conf)
-
-    defaults = {}
+    configurations = {}
     for conf in confs.split("\n"):
         if len(conf) == 0:
             continue
@@ -63,17 +58,18 @@ def main():
             val = int(val)
         elif val == "":
             val = None
-        defaults[key] = val
+        configurations[key] = val
 
     # print(defaults)
 
-    parser = argparse.ArgumentParser(description="SRUNIT v2.0.0")
+    parser = argparse.ArgumentParser(
+        description="srunit-cli", conflict_handler="resolve"
+    )
     parser.add_argument("--dry_run", "-d", action="store_true")
     parser.add_argument("--script_path", "-f", default=None)
 
-    for key, val in defaults.items():
+    for key, val in configurations.items():
         arg_key = "--" + key.lower().replace("-", "_")
-        print(arg_key)
         parser.add_argument(
             arg_key,
             default=val,
@@ -81,7 +77,9 @@ def main():
 
     args = parser.parse_args()
 
-    print(args)
+    # update configurations with arguments (overwrite default values)
+    for arg in vars(args):
+        configurations.update({arg.upper(): getattr(args, arg)})
 
     # Essential arguments (required for running the script)
     JOB_NAME = args.job_name
@@ -90,12 +88,14 @@ def main():
     GPU_NUM = args.gpu_num
     CPU_NUM = args.cpu_num
     SCRIPT_PATH = args.script_path
-    CHECKPOINTS_PATH = "checkpoints"
     ADDITIONAL_ARGS = ""
+    EXP_ROOT = None
+    DATETIME = datetime.now().strftime("%Y%m%d:%H%M%S")
 
     DRY_RUN = args.dry_run
 
     exp_root = Path(SCRIPT_PATH).parent
+    EXP_ROOT = exp_root
     RUN_ROOT_PATH = exp_root / "runs"
 
     # get run number (run_0, run_1, ...)
@@ -115,35 +115,55 @@ def main():
         Path.mkdir(OUTPUT_PATH, exist_ok=True, parents=True)
 
     # copy script to run directory
+
     RUN_SCRIPT_PATH = RUN_PATH / "finetune.sh"
     if not DRY_RUN:
         shutil.copy2(SCRIPT_PATH, RUN_SCRIPT_PATH)
 
     # set default job name if not specified (for sbatch)
     if JOB_NAME is None:
-        JOB_NAME = exp_root.stem
+        JOB_NAME = EXP_ROOT.stem
         JOB_NAME = JOB_NAME + "_" + str(i)
 
-    CHECKPOINTS_PATH = RUN_PATH / "checkpoints"
-
+    configurations.update(
+        {
+            "JOB_NAME": JOB_NAME,
+            "OUTPUT_PATH": OUTPUT_PATH,
+            "DATETIME": DATETIME,
+            "RUN_PATH": RUN_PATH,
+            "GPU_TYPE": GPU_TYPE,
+            "CPU_NUM": CPU_NUM,
+            "GPU_NUM": GPU_NUM,
+            "RUN_SCRIPT_PATH": RUN_SCRIPT_PATH,
+            "ADDITIONAL_ARGS": ADDITIONAL_ARGS,
+            "EXP_ROOT": EXP_ROOT,
+            "EXP_NAME": EXP_ROOT.stem,
+        }
+    )
+    # print(configurations)
     values = {}
+    for key, val in configurations.items():
+        if val is None:
+            val = getattr(args, key, "")
+        values[key] = val
 
-    # values = {
-    #     "JOB_NAME": JOB_NAME,
-    #     "OUTPUT_PATH": OUTPUT_PATH,
-    #     "GPU_TYPE": GPU_TYPE,
-    #     "GPU_NUM": GPU_NUM,
-    #     "CPU_NUM": CPU_NUM,
-    #     "SCRIPT_PATH": SCRIPT_PATH,
-    #     "CHECKPOINTS_PATH": CHECKPOINTS_PATH,
-    #     "RUN_SCRIPT_PATH": RUN_SCRIPT_PATH,
-    #     "ADDITIONAL_ARGS": ADDITIONAL_ARGS,
-    # }
-
-    with open("template.sbatch", "r") as f:
-        src = Template(f.read())
-        result = src.safe_substitute(values)
-        print(result)
+    src = Template(template=template)
+    result = src.safe_substitute(values)
+    # print(result)
+    if DRY_RUN:
+        print(bcolors.WARNING + "Dry run mode. Not submitting the job." + bcolors.ENDC)
+        print(
+            bcolors.WARNING
+            + f"This script will create a slurm script under `{RUN_PATH}` directory."
+            + bcolors.ENDC
+        )
+    else:
+        print(bcolors.OKGREEN + "Submitting the job..." + bcolors.ENDC)
+        print(bcolors.OKBLUE + f"Job name: {JOB_NAME}" + bcolors.ENDC)
+        slurm_script_path = RUN_PATH / "cluster.slurm.sh"
+        with open(slurm_script_path, "w") as f:
+            f.write(result)
+        os.system(f"sbatch {slurm_script_path}")
 
 
 if __name__ == "__main__":
