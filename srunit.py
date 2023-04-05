@@ -67,8 +67,6 @@ def main():
     )
     parser.add_argument("--dry_run", "-d", action="store_true")
     parser.add_argument("--script_path", "-f", default=None)
-    parser.add_argument("--gpu_num", "-n", default=None)
-    parser.add_argument("--gpu_type", "-t", default=None)
 
     for key, val in configurations.items():
         arg_key = "--" + key.lower().replace("-", "_")
@@ -77,12 +75,18 @@ def main():
             default=val,
         )
 
+    parser.add_argument("--gpu_num", "-n", default=configurations["GPU_NUM"])
+    parser.add_argument("--gpu_type", "-t", default=configurations["GPU_TYPE"])
+
     args = parser.parse_args()
 
     # update configurations with arguments (overwrite default values)
     for arg in vars(args):
-        configurations.update({arg.upper(): getattr(args, arg)})
+        if arg not in configurations:
+            print(arg)
+            configurations.update({arg.upper(): getattr(args, arg)})
 
+    print(configurations)
     # Essential arguments (required for running the script)
     JOB_NAME = args.job_name
     OUTPUT_PATH = args.output_path
