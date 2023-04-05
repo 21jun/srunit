@@ -67,6 +67,8 @@ def main():
     )
     parser.add_argument("--dry_run", "-d", action="store_true")
     parser.add_argument("--script_path", "-f", default=None)
+    parser.add_argument("--gpu_num", "-n", default=None)
+    parser.add_argument("--gpu_type", "-t", default=None)
 
     for key, val in configurations.items():
         arg_key = "--" + key.lower().replace("-", "_")
@@ -157,6 +159,7 @@ def main():
             + f"This script will create a slurm script under `{RUN_PATH}` directory."
             + bcolors.ENDC
         )
+        print(result)
     else:
         print(bcolors.OKGREEN + "Submitting the job..." + bcolors.ENDC)
         print(bcolors.OKBLUE + f"Job name: {JOB_NAME}" + bcolors.ENDC)
