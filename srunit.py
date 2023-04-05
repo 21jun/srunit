@@ -83,10 +83,8 @@ def main():
     # update configurations with arguments (overwrite default values)
     for arg in vars(args):
         if arg not in configurations:
-            print(arg)
             configurations.update({arg.upper(): getattr(args, arg)})
 
-    print(configurations)
     # Essential arguments (required for running the script)
     JOB_NAME = args.job_name
     OUTPUT_PATH = args.output_path
@@ -147,6 +145,8 @@ def main():
         }
     )
     # print(configurations)
+    print(configurations)
+
     values = {}
     for key, val in configurations.items():
         if val is None:
