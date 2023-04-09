@@ -1,6 +1,6 @@
 # srunit
 
-Automate your SLURM cluster...
+Better CLI for your SLURM cluster...
 
 # Installation
 
