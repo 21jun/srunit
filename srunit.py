@@ -94,7 +94,7 @@ def main():
     SCRIPT_PATH = args.script_path
     ADDITIONAL_ARGS = ""
     EXP_ROOT = None
-    DATETIME = datetime.now().strftime("%Y%m%d:%H%M%S")
+    DATETIME = datetime.now().strftime("%Y%m%d+%H:%M:%S")
 
     DRY_RUN = args.dry_run
 
@@ -102,14 +102,10 @@ def main():
     EXP_ROOT = exp_root
     RUN_ROOT_PATH = exp_root / "runs"
 
-    # get run number (run_0, run_1, ...)
-    i = 0
-    while os.path.exists(RUN_ROOT_PATH / f"run_{i}"):
-        i += 1
     # get output_path by script_path
 
     # create run directory
-    RUN_PATH = RUN_ROOT_PATH / f"run_{i}"
+    RUN_PATH = RUN_ROOT_PATH / f"run_{DATETIME}"
     if not DRY_RUN:
         Path.mkdir(RUN_PATH, exist_ok=True, parents=True)
 
@@ -127,7 +123,7 @@ def main():
     # set default job name if not specified (for sbatch)
     if JOB_NAME is None:
         JOB_NAME = EXP_ROOT.stem
-        JOB_NAME = JOB_NAME + "_" + str(i)
+        JOB_NAME = JOB_NAME + "_" + str(DATETIME)
 
     configurations.update(
         {
