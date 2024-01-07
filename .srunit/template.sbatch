@@ -1,3 +1,4 @@
+#!/bin/sh
 #SBATCH -J $JOB_NAME # job name
 #SBATCH -o $OUTPUT_PATH/output_%x.%j.out 
 #SBATCH -p $GPU_TYPE # queue name or partiton name
